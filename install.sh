@@ -96,6 +96,8 @@ function print_help() {
     echo ''
 }
 
+trap "log -e 'Installation failed!'" ERR
+
 for arg in $@; do
     case $arg in
     -h | --help | *)
@@ -118,6 +120,7 @@ require GVM_ADMIN_PWD
 ### INSTALL ###
 
 function update_system() {
+    set -e
     apt update
     apt upgrade -y
     apt dist-upgrade -y
@@ -125,6 +128,7 @@ function update_system() {
 }
 
 function install_deps() {
+    set -e
     curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
     echo 'deb https://dl.yarnpkg.com/debian/ stable main' \
         | tee /etc/apt/sources.list.d/yarn.list
@@ -152,6 +156,7 @@ log -i "Install dependencies"
 exec_as root install_deps
 
 function setup_path_ld() {
+    set -e
     echo "export PATH=\"\$PATH:$GVM_INSTALL_PREFIX/bin:$GVM_INSTALL_PREFIX/sbin:$GVM_INSTALL_PREFIX/.local/bin\"" \
         | tee -a /etc/profile.d/gvm.sh
     chmod 755 /etc/profile.d/gvm.sh
@@ -162,6 +167,7 @@ EOF
 }
 
 function setup_user() {
+    set -e
     useradd -c "GVM/OpenVAS user" -d "$GVM_INSTALL_PREFIX" -m -s /bin/bash -U -G redis gvm
 }
 
@@ -170,6 +176,7 @@ exec_as root setup_path_ld GVM_INSTALL_PREFIX
 exec_as root setup_user GVM_INSTALL_PREFIX
 
 function system_tweaks() {
+    set -e
     sysctl -w net.core.somaxconn=1024
     sysctl vm.overcommit_memory=1
     echo 'net.core.somaxconn=1024'  >> /etc/sysctl.conf
@@ -195,6 +202,7 @@ export PKG_CONFIG_PATH=$GVM_INSTALL_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH
 $AS_GVM "mkdir ~/src"
 
 function clone_sources() {
+    set -e
     cd ~/src
     git clone -b "gvm-libs-$GVM_VERSION" --single-branch  https://github.com/greenbone/gvm-libs.git
     git clone -b "openvas-$GVM_VERSION" --single-branch https://github.com/greenbone/openvas.git
@@ -208,6 +216,7 @@ function clone_sources() {
 exec_as gvm clone_sources GVM_VERSION
 
 function install_gvm_libs() {
+    set -e
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     cd ~/src/gvm-libs
     mkdir build
@@ -219,6 +228,7 @@ function install_gvm_libs() {
 }
 
 function install_openvas_smb() {
+    set -e
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     cd ~/src/openvas-smb
     mkdir build
@@ -229,6 +239,7 @@ function install_openvas_smb() {
 }
 
 function install_openvas() {
+    set -e
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     cd ~/src/openvas
     mkdir build
@@ -248,6 +259,7 @@ exec_as gvm install_openvas PKG_CONFIG_PATH GVM_INSTALL_PREFIX
 $AS_ROOT ldconfig
 
 function config_redis() {
+    set -e
     cp /etc/redis/redis.conf /etc/redis/redis.conf.orig
     cp "$GVM_INSTALL_PREFIX/src/openvas/config/redis-openvas.conf" /etc/redis/
     chown redis:redis /etc/redis/redis-openvas.conf
@@ -260,6 +272,7 @@ log -i "Configure redis"
 exec_as root config_redis GVM_INSTALL_PREFIX
 
 function edit_sudoers() {
+    set -e
     sed -e "s|\(Defaults\s*secure_path.*\)\"|\1:$GVM_INSTALL_PREFIX/sbin\"|" -i /etc/sudoers
     echo "gvm ALL = NOPASSWD: $GVM_INSTALL_PREFIX/sbin/openvas" > /etc/sudoers.d/gvm
     echo "gvm ALL = NOPASSWD: $GVM_INSTALL_PREFIX/sbin/gsad" >> /etc/sudoers.d/gvm
@@ -270,6 +283,7 @@ log -i "Edit sudoers"
 exec_as root edit_sudoers GVM_INSTALL_PREFIX
 
 function install_gvmd() {
+    set -e
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     cd ~/src/gvmd
     mkdir build
@@ -284,6 +298,7 @@ log -i "Install gvmd"
 exec_as gvm install_gvmd PKG_CONFIG_PATH GVM_INSTALL_PREFIX
 
 function setup_postgres() {
+    set -e
     createuser -DRS gvm
     createdb -O gvm gvmd
     psql gvmd -c 'create role dba with superuser noinherit;'
@@ -296,6 +311,7 @@ log -i "Setup postgresql"
 exec_as postgres setup_postgres
 
 function setup_gvmd() {
+    set -e
     gvm-manage-certs -a
     gvmd --create-user=admin --password="$GVM_ADMIN_PWD"
     # set feed owner
@@ -307,6 +323,7 @@ log -i "Setup gvmd"
 exec_as gvm setup_gvmd GVM_ADMIN_PWD
 
 function install_gsa() {
+    set -e
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     cd ~/src/gsa
     mkdir build
@@ -322,6 +339,7 @@ log -i "Install gsa"
 exec_as gvm install_gsa PKG_CONFIG_PATH GVM_INSTALL_PREFIX
 
 function install_ospd_openvas() {
+    set -e
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     cd ~/src
     virtualenv --python python3.7 "$GVM_INSTALL_PREFIX/bin/ospd-scanner/"
@@ -337,6 +355,7 @@ log -i "Install ospd-openvas"
 exec_as gvm install_ospd_openvas PKG_CONFIG_PATH GVM_INSTALL_PREFIX
 
 function create_gvmd_service() {
+    set -e
     cat << EOF > /etc/systemd/system/gvmd.service
 [Unit]
 Description=Open Vulnerability Assessment System Manager Daemon
@@ -367,6 +386,7 @@ EOF
 }
 
 function create_gsad_service() {
+    set -e
     cat << EOF > /etc/systemd/system/gsad.service
 [Unit]
 Description=Greenbone Security Assistant (gsad)
@@ -393,6 +413,7 @@ EOF
 }
 
 function create_openvas_service() {
+    set -e
     cat << EOF > /etc/systemd/system/ospd-openvas.service 
 [Unit]
 Description=Job that runs the ospd-openvas daemon
@@ -427,6 +448,7 @@ exec_as root create_gsad_service GVM_INSTALL_PREFIX
 exec_as root create_openvas_service GVM_INSTALL_PREFIX
 
 function set_default_scanner() {
+    set -e
     local id="$(gvmd --get-scanners | grep -i openvas | cut -d ' ' -f1 | tr -d '\n')"
     gvmd --modify-scanner="$id" --scanner-host="$GVM_INSTALL_PREFIX/var/run/ospd.sock"
 }
@@ -434,19 +456,51 @@ function set_default_scanner() {
 log -i "Set OpenVAS default scanner"
 exec_as gvm set_default_scanner GVM_INSTALL_PREFIX
 
-function update_feed() {
-    # maybe loop in case of failure
+function update_nvts() {
+    set -e
     greenbone-nvt-sync
     sudo openvas -u
+}
+
+function update_certdata() {
+    set -e
     greenbone-certdata-sync
+}
+
+function update_scapdata() {
+    set -e
     greenbone-scapdata-sync
+}
+
+function sync_feeds() {
+    set -e
     greenbone-feed-sync --type GVMD_DATA
     greenbone-feed-sync --type SCAP
     greenbone-feed-sync --type CERT
 }
 
-log -i "Update plugin feed"
-exec_as gvm update_feed
+function retry_on_failure() {
+    require 1
+    for (( i=1; i<5; i++ )); do
+        $1
+        if [ $? -eq 0 ]; then
+            true
+            break
+        fi
+        log -w "Command '$1' failed! Retry in a second..."
+        sleep 1
+        false
+    done || return 1
+}
+
+log -i "Update NVTs"
+retry_on_failure "exec_as gvm update_nvts"
+log -i "Update CERT data"
+retry_on_failure "exec_as gvm update_certdata"
+log -i "Update SCAP data"
+retry_on_failure "exec_as gvm update_scapdata"
+log -i "Sync feeds"
+exec_as gvm sync_feeds
 
 log -i "GVM installation completed"
 log -w "It might still take some time for the plugin feed to be imported!"

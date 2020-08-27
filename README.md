@@ -24,7 +24,8 @@ $ ./install.sh
 - internet access
 - shell (SSH) on the target system
 - user with *sudo* permissions
-- at least ~10GB disk storage (my test VM used 9.8GB after all).
+- at least ~10GB disk storage (my test VM used 9.8GB after all)
+- at least 4GB of memory
 
 ## Credits
 

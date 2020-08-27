@@ -28,6 +28,7 @@
 set -eE
 sudo -u $USER bash -c id
 
+export DEBIAN_FRONTEND=noninteractive
 export AS_ROOT="sudo bash -c"
 export AS_GVM="sudo -u gvm bash -c"
 export PROMPT="$(basename $0)"
@@ -121,33 +122,36 @@ require GVM_ADMIN_PWD
 
 function update_system() {
     set -e
+    export DEBIAN_FRONTEND=noninteractive
     apt update
-    apt upgrade -y
-    apt dist-upgrade -y
-    apt autoremove -y
+    apt upgrade -yq
+    apt dist-upgrade -yq
+    apt autoremove -yq
 }
 
 function install_deps() {
     set -e
-    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
-    echo 'deb https://dl.yarnpkg.com/debian/ stable main' \
-        | tee /etc/apt/sources.list.d/yarn.list
-    apt update
-    apt install -y --no-install-recommends \
-        bison cmake curl doxygen fakeroot gcc \
+    export DEBIAN_FRONTEND=noninteractive
+    apt install -yq \
+        bison cmake curl doxygen fakeroot gcc g++ \
         gcc-mingw-w64 gettext git gnupg gnutls-bin \
         graphviz heimdal-dev libgcrypt20-dev libglib2.0-dev \
         libgnutls28-dev libgpgme-dev libhiredis-dev \
         libical-dev libksba-dev libldap2-dev libmicrohttpd-dev \
         libpcap-dev libpopt-dev libradcli-dev libsnmp-dev \
-        libsqlite3-dev libssh-gcrypt-dev libxml2-dev nmap \
+        libsqlite3-dev libssh-gcrypt-dev libxml2-dev nmap nodejs npm \
         nsis perl-base pkg-config postgresql postgresql-contrib \
         postgresql-server-dev-all python3-defusedxml python3-lxml \
         python3-paramiko python3-pip python3-psutil python3-setuptools \
-        python-polib redis redis-server rpm rsync smbclient \
+        python-polib python3-dev redis redis-server rpm rsync smbclient \
         snmp socat software-properties-common sshpass \
         texlive-fonts-recommended texlive-latex-extra uuid-dev \
-        vim virtualenv wget xmltoman xml-twig-tools xsltproc yarn
+        vim virtualenv wget xmltoman xml-twig-tools xsltproc
+    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+    echo 'deb https://dl.yarnpkg.com/debian/ stable main' \
+        | tee /etc/apt/sources.list.d/yarn.list
+    apt update
+    apt install -yq yarn
 }
 
 log -i "Update system"
@@ -172,8 +176,8 @@ function setup_user() {
 }
 
 log -i "Setup user"
-exec_as root setup_path_ld GVM_INSTALL_PREFIX
 exec_as root setup_user GVM_INSTALL_PREFIX
+exec_as root setup_path_ld GVM_INSTALL_PREFIX
 
 function system_tweaks() {
     set -e
@@ -312,7 +316,8 @@ exec_as postgres setup_postgres
 
 function setup_gvmd() {
     set -e
-    gvm-manage-certs -a
+    . /etc/profile.d/gvm.sh
+    gvm-manage-certs -af
     gvmd --create-user=admin --password="$GVM_ADMIN_PWD"
     # set feed owner
     local admin_id="$(gvmd --get-users --verbose | grep admin | cut -d ' ' -f2 | tr -d '\n')"
@@ -382,7 +387,7 @@ WantedBy=multi-user.target
 EOF
     systemctl daemon-reload
     systemctl enable --now gvmd.service
-    systemctl status gvmd.service
+    systemctl --no-pager status gvmd.service
 }
 
 function create_gsad_service() {
@@ -409,7 +414,7 @@ WantedBy=multi-user.target
 EOF
     systemctl daemon-reload
     systemctl enable --now gsad.service
-    systemctl status gsad.service
+    systemctl --no-pager status gsad.service
 }
 
 function create_openvas_service() {
@@ -439,7 +444,7 @@ WantedBy=multi-user.target
 EOF
     systemctl daemon-reload
     systemctl enable --now ospd-openvas.service
-    systemctl status ospd-openvas.service
+    systemctl --no-pager status ospd-openvas.service
 }
 
 log -i "Create GVM services"
@@ -449,6 +454,7 @@ exec_as root create_openvas_service GVM_INSTALL_PREFIX
 
 function set_default_scanner() {
     set -e
+    . /etc/profile.d/gvm.sh
     local id="$(gvmd --get-scanners | grep -i openvas | cut -d ' ' -f1 | tr -d '\n')"
     gvmd --modify-scanner="$id" --scanner-host="$GVM_INSTALL_PREFIX/var/run/ospd.sock"
 }
@@ -458,22 +464,26 @@ exec_as gvm set_default_scanner GVM_INSTALL_PREFIX
 
 function update_nvts() {
     set -e
+    . /etc/profile.d/gvm.sh
     greenbone-nvt-sync
     sudo openvas -u
 }
 
 function update_certdata() {
     set -e
+    . /etc/profile.d/gvm.sh
     greenbone-certdata-sync
 }
 
 function update_scapdata() {
     set -e
+    . /etc/profile.d/gvm.sh
     greenbone-scapdata-sync
 }
 
 function sync_feeds() {
     set -e
+    . /etc/profile.d/gvm.sh
     greenbone-feed-sync --type GVMD_DATA
     greenbone-feed-sync --type SCAP
     greenbone-feed-sync --type CERT

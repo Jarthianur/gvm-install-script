@@ -18,6 +18,8 @@ $ export GVM_VERSION=20.08
 $ ./install.sh
 ```
 
+I would recommend to run this inside a *screen* session, and specify a logfile.
+
 ## Requirements
 
 - debian 10 installation

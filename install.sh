@@ -481,12 +481,11 @@ function update_scapdata() {
     greenbone-scapdata-sync
 }
 
-function sync_feeds() {
+function sync_feed() {
     set -e
+    require 1
     . /etc/profile.d/gvm.sh
-    greenbone-feed-sync --type GVMD_DATA
-    greenbone-feed-sync --type SCAP
-    greenbone-feed-sync --type CERT
+    greenbone-feed-sync --type "$1"
 }
 
 function retry_on_failure() {
@@ -498,19 +497,21 @@ function retry_on_failure() {
             break
         fi
         log -w "Command '$1' failed! Retry in a second..."
-        sleep 1
+        sleep 3
         false
     done || return 1
 }
 
 log -i "Update NVTs"
 retry_on_failure "exec_as gvm update_nvts"
-log -i "Update CERT data"
-retry_on_failure "exec_as gvm update_certdata"
 log -i "Update SCAP data"
 retry_on_failure "exec_as gvm update_scapdata"
+log -i "Update CERT data"
+retry_on_failure "exec_as gvm update_certdata"
 log -i "Sync feeds"
-exec_as gvm sync_feeds
+retry_on_failure "exec_as gvm sync_feed GVMD_DATA"
+retry_on_failure "exec_as gvm sync_feed SCAP"
+retry_on_failure "exec_as gvm sync_feed CERT"
 
 log -i "GVM installation completed"
 log -w "It might still take some time for the plugin feed to be imported!"

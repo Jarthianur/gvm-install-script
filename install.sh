@@ -161,7 +161,11 @@ exec_as root install_deps
 
 function setup_user() {
     set -e
-    useradd -c "GVM/OpenVAS user" -d "$GVM_INSTALL_PREFIX" -m -s /bin/bash -U -G redis gvm
+    if [[ "$(id gvm 2>&1 | grep -o 'no such user')" == "no such user" ]]; then
+        useradd -c "GVM/OpenVAS user" -d "$GVM_INSTALL_PREFIX" -m -s /bin/bash -U -G redis gvm
+    else
+        usermod -c "GVM/OpenVAS user" -d "$GVM_INSTALL_PREFIX" -m -s /bin/bash -aG redis gvm
+    fi
     echo "export PATH=\"\$PATH:$GVM_INSTALL_PREFIX/bin:$GVM_INSTALL_PREFIX/sbin:$GVM_INSTALL_PREFIX/.local/bin\"" \
         | tee -a /etc/profile.d/gvm.sh
     chmod 755 /etc/profile.d/gvm.sh
@@ -327,7 +331,7 @@ function setup_gvmd() {
     set -e
     . /etc/profile.d/gvm.sh
     gvm-manage-certs -af
-    gvmd --create-user=admin --password="$GVM_ADMIN_PWD"
+    gvmd --get-users | grep admin || gvmd --create-user=admin --password="$GVM_ADMIN_PWD"
     # set feed owner
     local admin_id="$(gvmd --get-users --verbose | grep admin | cut -d ' ' -f2 | tr -d '\n')"
     gvmd --modify-setting 78eceaec-3385-11ea-b237-28d24461215b --value "$admin_id"
@@ -340,7 +344,7 @@ function install_gsa() {
     set -e
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     cd ~/src/gsa
-    mkdir build
+    mkdir -p build
     cd build
     cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" ..
     make -j
@@ -356,9 +360,11 @@ function install_ospd_openvas() {
     set -e
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     cd ~/src
-    virtualenv --python python3.7 "$GVM_INSTALL_PREFIX/bin/ospd-scanner/"
+    if [ $(ps aux | grep ospd-scanner | wc -l) -eq 1 ]; then
+        virtualenv --python python3.7 "$GVM_INSTALL_PREFIX/bin/ospd-scanner/"
+    fi
     . "$GVM_INSTALL_PREFIX/bin/ospd-scanner/bin/activate"
-    mkdir "$GVM_INSTALL_PREFIX/var/run/ospd/"
+    mkdir -p "$GVM_INSTALL_PREFIX/var/run/ospd/"
     cd ospd
     pip3 install .
     cd ../ospd-openvas/
@@ -492,9 +498,8 @@ function update_scapdata() {
 
 function sync_feed() {
     set -e
-    require 1
     . /etc/profile.d/gvm.sh
-    greenbone-feed-sync --type "$1"
+    greenbone-feed-sync --type "$FEED_TYPE"
 }
 
 function retry_on_failure() {
@@ -513,14 +518,66 @@ function retry_on_failure() {
 
 log -i "Update NVTs"
 retry_on_failure "exec_as gvm update_nvts"
+sleep 5
 log -i "Update SCAP data"
 retry_on_failure "exec_as gvm update_scapdata"
+sleep 5
 log -i "Update CERT data"
 retry_on_failure "exec_as gvm update_certdata"
+sleep 5
 log -i "Sync feeds"
-retry_on_failure "exec_as gvm sync_feed GVMD_DATA"
-retry_on_failure "exec_as gvm sync_feed SCAP"
-retry_on_failure "exec_as gvm sync_feed CERT"
+export FEED_TYPE=GVMD_DATA
+retry_on_failure "exec_as gvm sync_feed FEED_TYPE"
+FEED_TYPE=SCAP
+retry_on_failure "exec_as gvm sync_feed FEED_TYPE"
+FEED_TYPE=CERT
+retry_on_failure "exec_as gvm sync_feed FEED_TYPE"
+unset FEED_TYPE
+
+function create_feed_update_service() {
+    set -e
+    cat << EOF > "$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh"
+#!/bin/bash
+set -e
+. /etc/profile.d/gvm.sh
+greenbone-nvt-sync
+greenbone-feed-sync --type GVMD_DATA
+greenbone-feed-sync --type SCAP
+greenbone-feed-sync --type CERT
+EOF
+    chown gvm:gvm "$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh"
+    chmod 755 "$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh"
+
+    cat << EOF > /etc/systemd/system/gvm-feed-update.service
+[Unit]
+Description=GVM feed update
+
+[Service]
+Type=simple
+User=gvm
+Group=gvm
+ExecStart=$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh
+Restart=on-failure
+RestartSec=10sec
+EOF
+
+    cat << EOF > /etc/systemd/system/gvm-feed-update.timer
+[Unit]
+Description=GVM feed update timer
+
+[Timer]
+OnCalendar=weekly
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+    systemctl daemon-reload
+    systemctl enable --now gvm-feed-update.timer
+}
+
+log -i "Create weekly feed update service"
+exec_as root create_feed_update_service GVM_INSTALL_PREFIX
 
 log -i "GVM installation completed"
 log -w "It might still take some time for the plugin feed to be imported!"

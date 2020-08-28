@@ -499,7 +499,7 @@ function update_scapdata() {
 function sync_feed() {
     set -e
     . /etc/profile.d/gvm.sh
-    greenbone-feed-sync --type "$1"
+    greenbone-feed-sync --type "$FEED_TYPE"
 }
 
 function retry_on_failure() {
@@ -526,9 +526,13 @@ log -i "Update CERT data"
 retry_on_failure "exec_as gvm update_certdata"
 sleep 5
 log -i "Sync feeds"
-retry_on_failure "exec_as gvm sync_feed GVMD_DATA"
-retry_on_failure "exec_as gvm sync_feed SCAP"
-retry_on_failure "exec_as gvm sync_feed CERT"
+export FEED_TYPE=GVMD_DATA
+retry_on_failure "exec_as gvm sync_feed FEED_TYPE"
+FEED_TYPE=SCAP
+retry_on_failure "exec_as gvm sync_feed FEED_TYPE"
+FEED_TYPE=CERT
+retry_on_failure "exec_as gvm sync_feed FEED_TYPE"
+unset FEED_TYPE
 
 function create_feed_update_service() {
     set -e

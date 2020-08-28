@@ -496,7 +496,6 @@ function update_scapdata() {
 
 function sync_feed() {
     set -e
-    require 1
     . /etc/profile.d/gvm.sh
     greenbone-feed-sync --type "$1"
 }
@@ -517,10 +516,13 @@ function retry_on_failure() {
 
 log -i "Update NVTs"
 retry_on_failure "exec_as gvm update_nvts"
+sleep 5
 log -i "Update SCAP data"
 retry_on_failure "exec_as gvm update_scapdata"
+sleep 5
 log -i "Update CERT data"
 retry_on_failure "exec_as gvm update_certdata"
+sleep 5
 log -i "Sync feeds"
 retry_on_failure "exec_as gvm sync_feed GVMD_DATA"
 retry_on_failure "exec_as gvm sync_feed SCAP"

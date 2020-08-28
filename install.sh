@@ -513,5 +513,50 @@ retry_on_failure "exec_as gvm sync_feed GVMD_DATA"
 retry_on_failure "exec_as gvm sync_feed SCAP"
 retry_on_failure "exec_as gvm sync_feed CERT"
 
+function create_feed_update_service() {
+    set -e
+    cat << EOF > "$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh"
+#!/bin/bash
+set -e
+. /etc/profile.d/gvm.sh
+greenbone-nvt-sync
+greenbone-feed-sync --type GVMD_DATA
+greenbone-feed-sync --type SCAP
+greenbone-feed-sync --type CERT
+EOF
+    chown gvm:gvm "$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh"
+    chmod 755 "$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh"
+
+    cat << EOF > /etc/systemd/system/gvm-feed-update.service
+[Unit]
+Description=GVM feed update
+
+[Service]
+Type=simple
+User=gvm
+Group=gvm
+ExecStart=$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh
+Restart=on-failure
+RestartSec=10sec
+EOF
+
+    cat << EOF > /etc/systemd/system/gvm-feed-update.timer
+[Unit]
+Description=GVM feed update timer
+
+[Timer]
+OnCalendar=weekly
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+    systemctl daemon-reload
+    systemctl enable --now gvm-feed-update.timer
+}
+
+log -i "Create weekly feed update service"
+exec_as root create_feed_update_service GVM_INSTALL_PREFIX
+
 log -i "GVM installation completed"
 log -w "It might still take some time for the plugin feed to be imported!"

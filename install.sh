@@ -161,7 +161,11 @@ exec_as root install_deps
 
 function setup_user() {
     set -e
-    useradd -c "GVM/OpenVAS user" -d "$GVM_INSTALL_PREFIX" -m -s /bin/bash -U -G redis gvm
+    if [[ "$(id gvm 2>&1 | grep -o 'no such user')" == "no such user" ]]; then
+        useradd -c "GVM/OpenVAS user" -d "$GVM_INSTALL_PREFIX" -m -s /bin/bash -U -G redis gvm
+    else
+        usermod -c "GVM/OpenVAS user" -d "$GVM_INSTALL_PREFIX" -m -s /bin/bash -aG redis gvm
+    fi
     echo "export PATH=\"\$PATH:$GVM_INSTALL_PREFIX/bin:$GVM_INSTALL_PREFIX/sbin:$GVM_INSTALL_PREFIX/.local/bin\"" \
         | tee -a /etc/profile.d/gvm.sh
     chmod 755 /etc/profile.d/gvm.sh

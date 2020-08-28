@@ -344,7 +344,7 @@ function install_gsa() {
     set -e
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     cd ~/src/gsa
-    mkdir build
+    mkdir -p build
     cd build
     cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" ..
     make -j
@@ -362,7 +362,7 @@ function install_ospd_openvas() {
     cd ~/src
     virtualenv --python python3.7 "$GVM_INSTALL_PREFIX/bin/ospd-scanner/"
     . "$GVM_INSTALL_PREFIX/bin/ospd-scanner/bin/activate"
-    mkdir "$GVM_INSTALL_PREFIX/var/run/ospd/"
+    mkdir -p "$GVM_INSTALL_PREFIX/var/run/ospd/"
     cd ospd
     pip3 install .
     cd ../ospd-openvas/

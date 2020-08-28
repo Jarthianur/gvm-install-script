@@ -331,7 +331,7 @@ function setup_gvmd() {
     set -e
     . /etc/profile.d/gvm.sh
     gvm-manage-certs -af
-    gvmd --create-user=admin --password="$GVM_ADMIN_PWD"
+    gvmd --get-users | grep admin || gvmd --create-user=admin --password="$GVM_ADMIN_PWD"
     # set feed owner
     local admin_id="$(gvmd --get-users --verbose | grep admin | cut -d ' ' -f2 | tr -d '\n')"
     gvmd --modify-setting 78eceaec-3385-11ea-b237-28d24461215b --value "$admin_id"

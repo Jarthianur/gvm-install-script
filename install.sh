@@ -26,7 +26,7 @@
 # For more information, please refer to <https://unlicense.org>
 
 set -eE
-sudo -u $USER bash -c id
+sudo bash -c "echo 'User $USER is sudo enabled.'"
 
 export DEBIAN_FRONTEND=noninteractive
 export AS_ROOT="sudo bash -c"
@@ -159,8 +159,9 @@ exec_as root update_system
 log -i "Install dependencies"
 exec_as root install_deps
 
-function setup_path_ld() {
+function setup_user() {
     set -e
+    useradd -c "GVM/OpenVAS user" -d "$GVM_INSTALL_PREFIX" -m -s /bin/bash -U -G redis gvm
     echo "export PATH=\"\$PATH:$GVM_INSTALL_PREFIX/bin:$GVM_INSTALL_PREFIX/sbin:$GVM_INSTALL_PREFIX/.local/bin\"" \
         | tee -a /etc/profile.d/gvm.sh
     chmod 755 /etc/profile.d/gvm.sh
@@ -170,14 +171,8 @@ $GVM_INSTALL_PREFIX/lib
 EOF
 }
 
-function setup_user() {
-    set -e
-    useradd -c "GVM/OpenVAS user" -d "$GVM_INSTALL_PREFIX" -m -s /bin/bash -U -G redis gvm
-}
-
 log -i "Setup user"
 exec_as root setup_user GVM_INSTALL_PREFIX
-exec_as root setup_path_ld GVM_INSTALL_PREFIX
 
 function system_tweaks() {
     set -e
@@ -203,18 +198,25 @@ exec_as root system_tweaks
 
 log -i "Clone GVM sources"
 export PKG_CONFIG_PATH=$GVM_INSTALL_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH
-$AS_GVM "mkdir ~/src"
+$AS_GVM "mkdir -p ~/src"
 
 function clone_sources() {
     set -e
     cd ~/src
-    git clone -b "gvm-libs-$GVM_VERSION" --single-branch  https://github.com/greenbone/gvm-libs.git
-    git clone -b "openvas-$GVM_VERSION" --single-branch https://github.com/greenbone/openvas.git
-    git clone -b "gvmd-$GVM_VERSION" --single-branch https://github.com/greenbone/gvmd.git
-    git clone -b master --single-branch https://github.com/greenbone/openvas-smb.git
-    git clone -b "gsa-$GVM_VERSION" --single-branch https://github.com/greenbone/gsa.git
-    git clone -b "ospd-openvas-$GVM_VERSION" --single-branch  https://github.com/greenbone/ospd-openvas.git
-    git clone -b "ospd-$GVM_VERSION" --single-branch https://github.com/greenbone/ospd.git
+    git clone -b "gvm-libs-$GVM_VERSION" --single-branch https://github.com/greenbone/gvm-libs.git \
+        || (cd gvm-libs; git pull; cd ..)
+    git clone -b "openvas-$GVM_VERSION" --single-branch https://github.com/greenbone/openvas.git \
+        || (cd openvas; git pull; cd ..)
+    git clone -b "gvmd-$GVM_VERSION" --single-branch https://github.com/greenbone/gvmd.git \
+        || (cd gvmd; git pull; cd ..)
+    git clone -b master --single-branch https://github.com/greenbone/openvas-smb.git \
+        || (cd openvas-smb; git pull; cd ..)
+    git clone -b "gsa-$GVM_VERSION" --single-branch https://github.com/greenbone/gsa.git \
+        || (cd gsa; git pull; cd ..)
+    git clone -b "ospd-openvas-$GVM_VERSION" --single-branch https://github.com/greenbone/ospd-openvas.git \
+        || (cd ospd-openvas; git pull; cd ..)
+    git clone -b "ospd-$GVM_VERSION" --single-branch https://github.com/greenbone/ospd.git \
+        || (cd ospd; git pull; cd ..)
 }
 
 exec_as gvm clone_sources GVM_VERSION
@@ -223,7 +225,7 @@ function install_gvm_libs() {
     set -e
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     cd ~/src/gvm-libs
-    mkdir build
+    mkdir -p build
     cd build
     cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" ..
     make -j
@@ -235,7 +237,7 @@ function install_openvas_smb() {
     set -e
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     cd ~/src/openvas-smb
-    mkdir build
+    mkdir -p build
     cd build
     cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" ..
     make -j
@@ -246,7 +248,7 @@ function install_openvas() {
     set -e
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     cd ~/src/openvas
-    mkdir build
+    mkdir -p build
     cd build
     cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" ..
     make -j
@@ -264,8 +266,8 @@ $AS_ROOT ldconfig
 
 function config_redis() {
     set -e
-    cp /etc/redis/redis.conf /etc/redis/redis.conf.orig
-    cp "$GVM_INSTALL_PREFIX/src/openvas/config/redis-openvas.conf" /etc/redis/
+    cp -f /etc/redis/redis.conf /etc/redis/redis.conf.orig
+    cp -f "$GVM_INSTALL_PREFIX/src/openvas/config/redis-openvas.conf" /etc/redis/
     chown redis:redis /etc/redis/redis-openvas.conf
     echo 'db_address = /run/redis-openvas/redis.sock' > "$GVM_INSTALL_PREFIX/etc/openvas/openvas.conf"
     chown gvm:gvm "$GVM_INSTALL_PREFIX/etc/openvas/openvas.conf"
@@ -277,7 +279,9 @@ exec_as root config_redis GVM_INSTALL_PREFIX
 
 function edit_sudoers() {
     set -e
-    sed -e "s|\(Defaults\s*secure_path.*\)\"|\1:$GVM_INSTALL_PREFIX/sbin\"|" -i /etc/sudoers
+    if [[ "$(grep -o '$GVM_INSTALL_PREFIX/sbin' /etc/sudoers || true)" == "" ]]; then
+        sed -e "s|\(Defaults\s*secure_path.*\)\"|\1:$GVM_INSTALL_PREFIX/sbin\"|" -i /etc/sudoers
+    fi
     echo "gvm ALL = NOPASSWD: $GVM_INSTALL_PREFIX/sbin/openvas" > /etc/sudoers.d/gvm
     echo "gvm ALL = NOPASSWD: $GVM_INSTALL_PREFIX/sbin/gsad" >> /etc/sudoers.d/gvm
     chmod 440 /etc/sudoers.d/gvm
@@ -290,7 +294,7 @@ function install_gvmd() {
     set -e
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     cd ~/src/gvmd
-    mkdir build
+    mkdir -p build
     cd build
     cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" ..
     make -j
@@ -303,12 +307,17 @@ exec_as gvm install_gvmd PKG_CONFIG_PATH GVM_INSTALL_PREFIX
 
 function setup_postgres() {
     set -e
-    createuser -DRS gvm
-    createdb -O gvm gvmd
-    psql gvmd -c 'create role dba with superuser noinherit;'
+    psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='gvm'" | grep -q 1 \
+        || createuser -DRS gvm
+    psql -lqt | cut -d '|' -f 1 | grep -qw gvmd \
+        || createdb -O gvm gvmd
+    psql gvmd -c 'create role dba with superuser noinherit;' \
+        2>&1 | grep -e 'already exists' -e 'CREATE ROLE'
     psql gvmd -c 'grant dba to gvm;'
-    psql gvmd -c 'create extension "uuid-ossp";'
-    psql gvmd -c 'create extension "pgcrypto";'
+    psql gvmd -c 'create extension "uuid-ossp";' \
+        2>&1 | grep -e 'already exists' -e 'CREATE EXTENSION'
+    psql gvmd -c 'create extension "pgcrypto";' \
+        2>&1 | grep -e 'already exists' -e 'CREATE EXTENSION'
 }
 
 log -i "Setup postgresql"

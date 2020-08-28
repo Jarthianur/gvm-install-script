@@ -360,7 +360,9 @@ function install_ospd_openvas() {
     set -e
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     cd ~/src
-    virtualenv --python python3.7 "$GVM_INSTALL_PREFIX/bin/ospd-scanner/"
+    if [ $(ps aux | grep ospd-scanner | wc -l) -eq 1 ]; then
+        virtualenv --python python3.7 "$GVM_INSTALL_PREFIX/bin/ospd-scanner/"
+    fi
     . "$GVM_INSTALL_PREFIX/bin/ospd-scanner/bin/activate"
     mkdir -p "$GVM_INSTALL_PREFIX/var/run/ospd/"
     cd ospd

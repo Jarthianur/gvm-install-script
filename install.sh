@@ -182,6 +182,7 @@ function system_tweaks() {
     set -e
     sysctl -w net.core.somaxconn=1024
     sysctl vm.overcommit_memory=1
+    # TODO: check for their existence
     echo 'net.core.somaxconn=1024'  >> /etc/sysctl.conf
     echo 'vm.overcommit_memory=1' >> /etc/sysctl.conf
     cat << EOF > /etc/systemd/system/disable-thp.service
@@ -360,8 +361,8 @@ function install_ospd_openvas() {
     set -e
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     cd ~/src
-    if [ $(ps aux | grep ospd-scanner | wc -l) -eq 1 ]; then
-        virtualenv --python python3.7 "$GVM_INSTALL_PREFIX/bin/ospd-scanner/"
+    if [ ! -d "$GVM_INSTALL_PREFIX/bin/ospd-scanner/" ]; then
+        virtualenv --python python3 "$GVM_INSTALL_PREFIX/bin/ospd-scanner/"
     fi
     . "$GVM_INSTALL_PREFIX/bin/ospd-scanner/bin/activate"
     mkdir -p "$GVM_INSTALL_PREFIX/var/run/ospd/"

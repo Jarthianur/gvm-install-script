@@ -504,6 +504,7 @@ function sync_feed() {
 }
 
 function retry_on_failure() {
+    local rtry_s=10
     require 1
     for (( i=1; i<5; i++ )); do
         $1
@@ -511,21 +512,21 @@ function retry_on_failure() {
             true
             break
         fi
-        log -w "Command '$1' failed! Retry in a second..."
-        sleep 3
+        log -w "Command '$1' failed! Retry in $rtry_s seconds..."
+        sleep $rtry_s
         false
     done || return 1
 }
 
 log -i "Update NVTs"
 retry_on_failure "exec_as gvm update_nvts"
-sleep 5
+sleep 10
 log -i "Update SCAP data"
 retry_on_failure "exec_as gvm update_scapdata"
-sleep 5
+sleep 10
 log -i "Update CERT data"
 retry_on_failure "exec_as gvm update_certdata"
-sleep 5
+sleep 10
 log -i "Sync feeds"
 export FEED_TYPE=GVMD_DATA
 retry_on_failure "exec_as gvm sync_feed FEED_TYPE"

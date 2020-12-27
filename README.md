@@ -1,9 +1,8 @@
 # gvm-install-script
 
-An *unofficial* script to install GVM alias OpenVAS on debian (10).
-**This is currently WORK IN PROGRESS**
+An *unofficial* script to install GVM alias OpenVAS on debian (10) and ubuntu (20.04).
 
-This script installs GVM, alias OpenVAS, on a debian system of version 10 (buster). It is not made for docker, but VMs and bare metal deployments. It does not configure any of the components, nor the system to be secure or production ready.
+This script installs GVM, alias OpenVAS. It is not made for docker, but VMs and bare metal deployments. It does not configure any of the components, nor the system to be secure or production ready.
 
 ## Usage
 
@@ -18,16 +17,18 @@ $ export GVM_VERSION=20.08
 $ ./install.sh
 ```
 
-I would recommend to run this inside a *screen* session, and specify a logfile.
-
 ## Requirements
 
-- debian 10 installation
+- base installation of one of
+  - debian 10
+  - ubuntu 20.04
 - internet access
 - shell (SSH) on the target system
+- *sudo* installed
 - user with *sudo* permissions
 - at least ~10GB disk storage (my test VM used 9.8GB after all)
 - at least 4GB of memory
+- at least 2 CPU cores / vCPUs
 
 ## Credits
 

@@ -143,7 +143,7 @@ function install_deps() {
         nsis perl-base pkg-config postgresql postgresql-contrib \
         postgresql-server-dev-all python3-defusedxml python3-lxml \
         python3-paramiko python3-pip python3-psutil python3-setuptools \
-        python-polib python3-dev redis redis-server rpm rsync smbclient \
+        python3-polib python3-dev redis redis-server rpm rsync smbclient \
         snmp socat software-properties-common sshpass \
         texlive-fonts-recommended texlive-latex-extra uuid-dev \
         vim virtualenv wget xmltoman xml-twig-tools xsltproc

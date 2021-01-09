@@ -182,6 +182,7 @@ function system_tweaks() {
     set -e
     sysctl -w net.core.somaxconn=1024
     sysctl vm.overcommit_memory=1
+    # TODO: check for their existence
     echo 'net.core.somaxconn=1024'  >> /etc/sysctl.conf
     echo 'vm.overcommit_memory=1' >> /etc/sysctl.conf
     cat << EOF > /etc/systemd/system/disable-thp.service
@@ -360,8 +361,8 @@ function install_ospd_openvas() {
     set -e
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
     cd ~/src
-    if [ $(ps aux | grep ospd-scanner | wc -l) -eq 1 ]; then
-        virtualenv --python python3.7 "$GVM_INSTALL_PREFIX/bin/ospd-scanner/"
+    if [ ! -d "$GVM_INSTALL_PREFIX/bin/ospd-scanner/" ]; then
+        virtualenv --python python3 "$GVM_INSTALL_PREFIX/bin/ospd-scanner/"
     fi
     . "$GVM_INSTALL_PREFIX/bin/ospd-scanner/bin/activate"
     mkdir -p "$GVM_INSTALL_PREFIX/var/run/ospd/"
@@ -477,6 +478,54 @@ function set_default_scanner() {
 log -i "Set OpenVAS default scanner"
 exec_as gvm set_default_scanner GVM_INSTALL_PREFIX
 
+function create_feed_update_service() {
+    set -e
+    cat << EOF > "$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh"
+#!/bin/bash
+set -e
+. /etc/profile.d/gvm.sh
+greenbone-nvt-sync
+sleep 300
+greenbone-feed-sync --type GVMD_DATA
+sleep 300
+greenbone-feed-sync --type SCAP
+sleep 300
+greenbone-feed-sync --type CERT
+EOF
+    chown gvm:gvm "$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh"
+    chmod 755 "$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh"
+
+    cat << EOF > /etc/systemd/system/gvm-feed-update.service
+[Unit]
+Description=GVM feed update
+
+[Service]
+Type=simple
+User=gvm
+Group=gvm
+ExecStart=$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh
+Restart=on-failure
+RestartSec=30sec
+EOF
+
+    cat << EOF > /etc/systemd/system/gvm-feed-update.timer
+[Unit]
+Description=GVM feed update timer
+
+[Timer]
+OnCalendar=weekly
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+    systemctl daemon-reload
+    systemctl enable --now gvm-feed-update.timer
+}
+
+log -i "Create weekly feed update service"
+exec_as root create_feed_update_service GVM_INSTALL_PREFIX
+
 function update_nvts() {
     set -e
     . /etc/profile.d/gvm.sh
@@ -503,6 +552,7 @@ function sync_feed() {
 }
 
 function retry_on_failure() {
+    local rtry_s=300
     require 1
     for (( i=1; i<5; i++ )); do
         $1
@@ -510,74 +560,32 @@ function retry_on_failure() {
             true
             break
         fi
-        log -w "Command '$1' failed! Retry in a second..."
-        sleep 3
+        log -w "Command '$1' failed! Retry in $rtry_s seconds..."
+        sleep $rtry_s
         false
     done || return 1
 }
 
 log -i "Update NVTs"
 retry_on_failure "exec_as gvm update_nvts"
-sleep 5
+sleep 300
 log -i "Update SCAP data"
 retry_on_failure "exec_as gvm update_scapdata"
-sleep 5
+sleep 300
 log -i "Update CERT data"
 retry_on_failure "exec_as gvm update_certdata"
-sleep 5
+sleep 300
 log -i "Sync feeds"
 export FEED_TYPE=GVMD_DATA
 retry_on_failure "exec_as gvm sync_feed FEED_TYPE"
+sleep 300
 FEED_TYPE=SCAP
 retry_on_failure "exec_as gvm sync_feed FEED_TYPE"
+sleep 300
 FEED_TYPE=CERT
 retry_on_failure "exec_as gvm sync_feed FEED_TYPE"
 unset FEED_TYPE
 
-function create_feed_update_service() {
-    set -e
-    cat << EOF > "$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh"
-#!/bin/bash
-set -e
-. /etc/profile.d/gvm.sh
-greenbone-nvt-sync
-greenbone-feed-sync --type GVMD_DATA
-greenbone-feed-sync --type SCAP
-greenbone-feed-sync --type CERT
-EOF
-    chown gvm:gvm "$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh"
-    chmod 755 "$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh"
-
-    cat << EOF > /etc/systemd/system/gvm-feed-update.service
-[Unit]
-Description=GVM feed update
-
-[Service]
-Type=simple
-User=gvm
-Group=gvm
-ExecStart=$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh
-Restart=on-failure
-RestartSec=10sec
-EOF
-
-    cat << EOF > /etc/systemd/system/gvm-feed-update.timer
-[Unit]
-Description=GVM feed update timer
-
-[Timer]
-OnCalendar=weekly
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-EOF
-    systemctl daemon-reload
-    systemctl enable --now gvm-feed-update.timer
-}
-
-log -i "Create weekly feed update service"
-exec_as root create_feed_update_service GVM_INSTALL_PREFIX
-
 log -i "GVM installation completed"
+log -i "If the feed sync was not successful, do not run this script again. Instead run 'systemctl start gvm-feed-update.service'."
 log -w "It might still take some time for the plugin feed to be imported!"

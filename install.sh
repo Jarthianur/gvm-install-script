@@ -485,8 +485,11 @@ function create_feed_update_service() {
 set -e
 . /etc/profile.d/gvm.sh
 greenbone-nvt-sync
+sleep 300
 greenbone-feed-sync --type GVMD_DATA
+sleep 300
 greenbone-feed-sync --type SCAP
+sleep 300
 greenbone-feed-sync --type CERT
 EOF
     chown gvm:gvm "$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh"
@@ -502,7 +505,7 @@ User=gvm
 Group=gvm
 ExecStart=$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh
 Restart=on-failure
-RestartSec=60sec
+RestartSec=30sec
 EOF
 
     cat << EOF > /etc/systemd/system/gvm-feed-update.timer
@@ -549,7 +552,7 @@ function sync_feed() {
 }
 
 function retry_on_failure() {
-    local rtry_s=120
+    local rtry_s=300
     require 1
     for (( i=1; i<5; i++ )); do
         $1
@@ -565,20 +568,20 @@ function retry_on_failure() {
 
 log -i "Update NVTs"
 retry_on_failure "exec_as gvm update_nvts"
-sleep 60
+sleep 300
 log -i "Update SCAP data"
 retry_on_failure "exec_as gvm update_scapdata"
-sleep 60
+sleep 300
 log -i "Update CERT data"
 retry_on_failure "exec_as gvm update_certdata"
-sleep 60
+sleep 300
 log -i "Sync feeds"
 export FEED_TYPE=GVMD_DATA
 retry_on_failure "exec_as gvm sync_feed FEED_TYPE"
-sleep 60
+sleep 300
 FEED_TYPE=SCAP
 retry_on_failure "exec_as gvm sync_feed FEED_TYPE"
-sleep 60
+sleep 300
 FEED_TYPE=CERT
 retry_on_failure "exec_as gvm sync_feed FEED_TYPE"
 unset FEED_TYPE

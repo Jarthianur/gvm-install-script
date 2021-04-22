@@ -167,7 +167,7 @@ function setup_user() {
         usermod -c "GVM/OpenVAS user" -d "$GVM_INSTALL_PREFIX" -m -s /bin/bash -aG redis gvm
     fi
     echo "export PATH=\"\$PATH:$GVM_INSTALL_PREFIX/bin:$GVM_INSTALL_PREFIX/sbin:$GVM_INSTALL_PREFIX/.local/bin\"" \
-        | tee -a /etc/profile.d/gvm.sh
+        | tee /etc/profile.d/gvm.sh
     chmod 755 /etc/profile.d/gvm.sh
     . /etc/profile.d/gvm.sh
     cat << EOF > /etc/ld.so.conf.d/gvm.conf
@@ -182,9 +182,12 @@ function system_tweaks() {
     set -e
     sysctl -w net.core.somaxconn=1024
     sysctl vm.overcommit_memory=1
-    # TODO: check for their existence
-    echo 'net.core.somaxconn=1024'  >> /etc/sysctl.conf
-    echo 'vm.overcommit_memory=1' >> /etc/sysctl.conf
+    if [ -z "$(grep -o 'net.core.somaxconn=' /etc/sysctl.conf)"  ]; then
+        echo 'net.core.somaxconn=1024'  >> /etc/sysctl.conf
+    fi
+    if [ -z "$(grep -o 'vm.overcommit_memory=' /etc/sysctl.conf)"  ]; then
+        echo 'vm.overcommit_memory=1' >> /etc/sysctl.conf
+    fi
     cat << EOF > /etc/systemd/system/disable-thp.service
 [Unit]
 Description=Disable Transparent Huge Pages (THP)
@@ -209,19 +212,19 @@ function clone_sources() {
     set -e
     cd ~/src
     git clone -b "gvm-libs-$GVM_VERSION" --single-branch https://github.com/greenbone/gvm-libs.git \
-        || (cd gvm-libs; git pull; cd ..)
+        || (cd gvm-libs; git pull --all; git checkout "gvm-libs-$GVM_VERSION"; git pull; cd ..)
     git clone -b "openvas-$GVM_VERSION" --single-branch https://github.com/greenbone/openvas.git \
-        || (cd openvas; git pull; cd ..)
+        || (cd openvas; git pull --all; git checkout "openvas-$GVM_VERSION"; git pull; cd ..)
     git clone -b "gvmd-$GVM_VERSION" --single-branch https://github.com/greenbone/gvmd.git \
-        || (cd gvmd; git pull; cd ..)
+        || (cd gvmd; git pull --all; git checkout "gvmd-$GVM_VERSION"; git pull; cd ..)
     git clone -b master --single-branch https://github.com/greenbone/openvas-smb.git \
         || (cd openvas-smb; git pull; cd ..)
     git clone -b "gsa-$GVM_VERSION" --single-branch https://github.com/greenbone/gsa.git \
-        || (cd gsa; git pull; cd ..)
+        || (cd gsa; git pull --all; git checkout "gsa-$GVM_VERSION"; git pull; cd ..)
     git clone -b "ospd-openvas-$GVM_VERSION" --single-branch https://github.com/greenbone/ospd-openvas.git \
-        || (cd ospd-openvas; git pull; cd ..)
+        || (cd ospd-openvas; git pull --all; git checkout "ospd-openvas-$GVM_VERSION"; git pull; cd ..)
     git clone -b "ospd-$GVM_VERSION" --single-branch https://github.com/greenbone/ospd.git \
-        || (cd ospd; git pull; cd ..)
+        || (cd ospd; git pull --all; git checkout "ospd-$GVM_VERSION"; git pull; cd ..)
 }
 
 exec_as gvm clone_sources GVM_VERSION

@@ -575,20 +575,20 @@ function retry_on_failure() {
 
 log -i "Update NVTs"
 retry_on_failure "exec_as gvm update_nvts"
-sleep 300
+sleep 30
 log -i "Update SCAP data"
 retry_on_failure "exec_as gvm update_scapdata"
-sleep 300
+sleep 30
 log -i "Update CERT data"
 retry_on_failure "exec_as gvm update_certdata"
-sleep 300
+sleep 30
 log -i "Sync feeds"
 export FEED_TYPE=GVMD_DATA
 retry_on_failure "exec_as gvm sync_feed FEED_TYPE"
-sleep 300
+sleep 30
 FEED_TYPE=SCAP
 retry_on_failure "exec_as gvm sync_feed FEED_TYPE"
-sleep 300
+sleep 30
 FEED_TYPE=CERT
 retry_on_failure "exec_as gvm sync_feed FEED_TYPE"
 unset FEED_TYPE

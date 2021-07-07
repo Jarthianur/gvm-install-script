@@ -68,7 +68,6 @@ function require() {
 }
 
 function exec_as() {
-    require 1 2
     local user="$1"
     local fn="$2"
     shift; shift
@@ -238,8 +237,9 @@ function install_gvm_libs() {
     cd ~/src/gvm-libs
     mkdir -p build
     cd build
+    rm -rf *
     cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" ..
-    make -j
+    make -j$(nproc)
     make doc
     make install
 }
@@ -250,8 +250,9 @@ function install_openvas_smb() {
     cd ~/src/openvas-smb
     mkdir -p build
     cd build
+    rm -rf *
     cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" ..
-    make -j
+    make -j$(nproc)
     make install
 }
 
@@ -261,8 +262,9 @@ function install_openvas() {
     cd ~/src/openvas
     mkdir -p build
     cd build
+    rm -rf *
     cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" ..
-    make -j
+    make -j$(nproc)
     make doc
     make install
 }
@@ -307,8 +309,9 @@ function install_gvmd() {
     cd ~/src/gvmd
     mkdir -p build
     cd build
-    cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" ..
-    make -j
+    rm -rf *
+    cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" -DSYSTEMD_SERVICE_DIR="$GVM_INSTALL_PREFIX" ..
+    make -j$(nproc)
     make doc
     make install
 }
@@ -354,8 +357,9 @@ function install_gsa() {
     cd ~/src/gsa
     mkdir -p build
     cd build
-    cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" ..
-    make -j
+    rm -rf *
+    cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" -DSYSTEMD_SERVICE_DIR="$GVM_INSTALL_PREFIX" ..
+    make -j$(nproc)
     make doc
     make install
     touch "$GVM_INSTALL_PREFIX/var/log/gvm/gsad.log"

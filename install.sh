@@ -400,7 +400,7 @@ User=gvm
 Group=gvm
 PIDFile=$GVM_INSTALL_PREFIX/var/run/gvmd.pid
 WorkingDirectory=$GVM_INSTALL_PREFIX
-ExecStart=$GVM_INSTALL_PREFIX/sbin/gvmd --osp-vt-update=$GVM_INSTALL_PREFIX/var/run/ospd.sock
+ExecStart=$GVM_INSTALL_PREFIX/sbin/gvmd --osp-vt-update=$GVM_INSTALL_PREFIX/var/run/ospd.sock -c $GVM_INSTALL_PREFIX/var/run/gvmd.sock
 ExecReload=/bin/kill -HUP \$MAINPID
 KillMode=mixed
 Restart=on-failure
@@ -429,7 +429,7 @@ Wants=gvmd.service
 Type=forking
 PIDFile=$GVM_INSTALL_PREFIX/var/run/gsad.pid
 WorkingDirectory=$GVM_INSTALL_PREFIX
-ExecStart=$GVM_INSTALL_PREFIX/sbin/gsad --drop-privileges=gvm $GVM_GSAD_OPTS
+ExecStart=$GVM_INSTALL_PREFIX/sbin/gsad --drop-privileges=gvm --munix-socket=$GVM_INSTALL_PREFIX/var/run/gvmd.sock $GVM_GSAD_OPTS
 Restart=on-failure
 RestartSec=2min
 KillMode=process

@@ -476,7 +476,7 @@ EOF
 
 log -i "Create GVM services"
 exec_as root create_gvmd_service GVM_INSTALL_PREFIX
-exec_as root create_gsad_service GVM_INSTALL_PREFIX
+exec_as root create_gsad_service GVM_INSTALL_PREFIX GVM_GSAD_OPTS
 exec_as root create_openvas_service GVM_INSTALL_PREFIX
 
 function set_default_scanner() {

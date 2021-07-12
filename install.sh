@@ -549,3 +549,4 @@ exec_as root kickoff_feed_sync
 
 log -i "GVM installation completed"
 log -i "Plugin feeds are synced in background. This might take a while ..."
+log -i "Please reboot the machine as soon as possible."

@@ -238,7 +238,8 @@ function install_gvm_libs() {
     mkdir -p build
     cd build
     rm -rf *
-    cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" ..
+    cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" \
+      -DLOCALSTATEDIR="$GVM_INSTALL_PREFIX/var" -DSYSCONFDIR="$GVM_INSTALL_PREFIX/etc" ..
     make -j$(nproc)
     make doc
     make install
@@ -263,12 +264,15 @@ function install_openvas() {
     mkdir -p build
     cd build
     rm -rf *
-    cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" ..
+    cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" \
+      -DLOCALSTATEDIR="$GVM_INSTALL_PREFIX/var" -DSYSCONFDIR="$GVM_INSTALL_PREFIX/etc" ..
     make -j$(nproc)
     make doc
     make install
 }
 
+$AS_ROOT "mkdir -p -m 750 /run/gvm /run/ospd"
+$AS_ROOT "chown -R gvm. /run/gvm /run/ospd"
 log -i "Install gvm-libs"
 exec_as gvm install_gvm_libs PKG_CONFIG_PATH GVM_INSTALL_PREFIX
 log -i "Install openvas-smb"
@@ -310,7 +314,8 @@ function install_gvmd() {
     mkdir -p build
     cd build
     rm -rf *
-    cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" -DSYSTEMD_SERVICE_DIR="$GVM_INSTALL_PREFIX" ..
+    cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" -DSYSTEMD_SERVICE_DIR="$GVM_INSTALL_PREFIX" \
+      -DLOCALSTATEDIR="$GVM_INSTALL_PREFIX/var" -DSYSCONFDIR="$GVM_INSTALL_PREFIX/etc" ..
     make -j$(nproc)
     make doc
     make install
@@ -358,7 +363,8 @@ function install_gsa() {
     mkdir -p build
     cd build
     rm -rf *
-    cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" -DSYSTEMD_SERVICE_DIR="$GVM_INSTALL_PREFIX" ..
+    cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" -DSYSTEMD_SERVICE_DIR="$GVM_INSTALL_PREFIX" \
+      -DLOCALSTATEDIR="$GVM_INSTALL_PREFIX/var" -DSYSCONFDIR="$GVM_INSTALL_PREFIX/etc" ..
     make -j$(nproc)
     make doc
     make install

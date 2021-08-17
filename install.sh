@@ -496,15 +496,17 @@ function create_feed_update_service() {
 . /etc/profile.d/gvm.sh
 echo "SYNC NVTs ..."
 greenbone-nvt-sync
-sleep 300
+sleep 120
 echo "SYNC GVMD DATA ..."
 greenbone-feed-sync --type GVMD_DATA
-sleep 300
+sleep 120
 echo "SYNC SCAP DATA ..."
-greenbone-feed-sync --type SCAP
-sleep 300
+#greenbone-feed-sync --type SCAP
+greenbone-scapdata-sync
+sleep 120
 echo "SYNC CERT DATA ..."
-greenbone-feed-sync --type CERT
+#greenbone-feed-sync --type CERT
+greenbone-certdata-sync
 EOF
     chown gvm:gvm "$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh"
     chmod 755 "$GVM_INSTALL_PREFIX/bin/gvm-update-feed.sh"

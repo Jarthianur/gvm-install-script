@@ -382,7 +382,7 @@ function install_ospd_openvas() {
         virtualenv --python python3 "$GVM_INSTALL_PREFIX/bin/ospd-scanner/"
     fi
     . "$GVM_INSTALL_PREFIX/bin/ospd-scanner/bin/activate"
-    mkdir -p "$GVM_INSTALL_PREFIX/var/run/ospd/"
+    python3 -m pip install --upgrade pip
     cd ospd
     pip3 install .
     cd ../ospd-openvas/
@@ -404,9 +404,9 @@ After=postgresql.service ospd-openvas.service
 Type=forking
 User=gvm
 Group=gvm
-PIDFile=$GVM_INSTALL_PREFIX/var/run/gvmd.pid
+PIDFile=/run/gvm/gvmd.pid
 WorkingDirectory=$GVM_INSTALL_PREFIX
-ExecStart=$GVM_INSTALL_PREFIX/sbin/gvmd --osp-vt-update=$GVM_INSTALL_PREFIX/var/run/ospd.sock -c $GVM_INSTALL_PREFIX/var/run/gvmd.sock
+ExecStart=$GVM_INSTALL_PREFIX/sbin/gvmd --osp-vt-update=/run/ospd/ospd.sock -c /run/gvm/gvmd.sock
 ExecReload=/bin/kill -HUP \$MAINPID
 KillMode=mixed
 Restart=on-failure
@@ -433,9 +433,9 @@ After=network.target
 Wants=gvmd.service
 [Service]
 Type=forking
-PIDFile=$GVM_INSTALL_PREFIX/var/run/gsad.pid
+PIDFile=/run/gvm/gsad.pid
 WorkingDirectory=$GVM_INSTALL_PREFIX
-ExecStart=$GVM_INSTALL_PREFIX/sbin/gsad --drop-privileges=gvm --munix-socket=$GVM_INSTALL_PREFIX/var/run/gvmd.sock $GVM_GSAD_OPTS
+ExecStart=$GVM_INSTALL_PREFIX/sbin/gsad --drop-privileges=gvm --munix-socket=/run/gvm/gvmd.sock $GVM_GSAD_OPTS
 Restart=on-failure
 RestartSec=2min
 KillMode=process
@@ -464,8 +464,8 @@ Type=forking
 User=gvm
 Group=gvm
 WorkingDirectory=$GVM_INSTALL_PREFIX
-PIDFile=$GVM_INSTALL_PREFIX/var/run/ospd-openvas.pid
-ExecStart=$GVM_INSTALL_PREFIX/bin/ospd-scanner/bin/python $GVM_INSTALL_PREFIX/bin/ospd-scanner/bin/ospd-openvas --pid-file $GVM_INSTALL_PREFIX/var/run/ospd-openvas.pid --unix-socket=$GVM_INSTALL_PREFIX/var/run/ospd.sock --log-file $GVM_INSTALL_PREFIX/var/log/gvm/ospd-scanner.log --lock-file-dir $GVM_INSTALL_PREFIX/var/run/ospd/
+PIDFile=/run/ospd/ospd-openvas.pid
+ExecStart=$GVM_INSTALL_PREFIX/bin/ospd-scanner/bin/python $GVM_INSTALL_PREFIX/bin/ospd-scanner/bin/ospd-openvas --pid-file /run/ospd/ospd-openvas.pid --unix-socket=/run/ospd/ospd.sock --log-file $GVM_INSTALL_PREFIX/var/log/gvm/ospd-scanner.log --lock-file-dir /run/ospd/
 Restart=on-failure
 RestartSec=2min
 KillMode=process
@@ -489,7 +489,7 @@ function set_default_scanner() {
     set -e
     . /etc/profile.d/gvm.sh
     local id="$(gvmd --get-scanners | grep -i openvas | cut -d ' ' -f1 | tr -d '\n')"
-    gvmd --modify-scanner="$id" --scanner-host="$GVM_INSTALL_PREFIX/var/run/ospd.sock"
+    gvmd --modify-scanner="$id" --scanner-host="/run/ospd/ospd.sock"
 }
 
 log -i "Set OpenVAS default scanner"

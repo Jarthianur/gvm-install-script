@@ -111,7 +111,7 @@ done
 ### ARGUMENTS ###
 
 export GVM_INSTALL_PREFIX="${GVM_INSTALL_PREFIX:-/var/opt/gvm}"
-export GVM_VERSION="${GVM_VERSION:-21.04}"
+export GVM_VERSION="${GVM_VERSION:-stable}"
 export GVM_ADMIN_PWD="${GVM_ADMIN_PWD:-admin}"
 
 require GVM_INSTALL_PREFIX
@@ -213,20 +213,20 @@ $AS_GVM "mkdir -p ~/src"
 function clone_sources() {
     set -e
     cd ~/src
-    git clone -b "gvm-libs-$GVM_VERSION" https://github.com/greenbone/gvm-libs.git \
-        || (cd gvm-libs; git pull --all; git checkout "gvm-libs-$GVM_VERSION"; git pull; cd ..)
-    git clone -b "openvas-$GVM_VERSION" https://github.com/greenbone/openvas.git \
-        || (cd openvas; git pull --all; git checkout "openvas-$GVM_VERSION"; git pull; cd ..)
-    git clone -b "gvmd-$GVM_VERSION" https://github.com/greenbone/gvmd.git \
-        || (cd gvmd; git pull --all; git checkout "gvmd-$GVM_VERSION"; git pull; cd ..)
+    git clone -b "$GVM_VERSION" https://github.com/greenbone/gvm-libs.git \
+        || (cd gvm-libs; git pull --all; git checkout "$GVM_VERSION"; git pull; cd ..)
+    git clone -b "$GVM_VERSION" https://github.com/greenbone/openvas.git \
+        || (cd openvas; git pull --all; git checkout "$GVM_VERSION"; git pull; cd ..)
+    git clone -b "$GVM_VERSION" https://github.com/greenbone/gvmd.git \
+        || (cd gvmd; git pull --all; git checkout "$GVM_VERSION"; git pull; cd ..)
     git clone -b master --single-branch https://github.com/greenbone/openvas-smb.git \
         || (cd openvas-smb; git pull; cd ..)
-    git clone -b "gsa-$GVM_VERSION" https://github.com/greenbone/gsa.git \
-        || (cd gsa; git pull --all; git checkout "gsa-$GVM_VERSION"; git pull; cd ..)
-    git clone -b "ospd-openvas-$GVM_VERSION" https://github.com/greenbone/ospd-openvas.git \
-        || (cd ospd-openvas; git pull --all; git checkout "ospd-openvas-$GVM_VERSION"; git pull; cd ..)
-    git clone -b "ospd-$GVM_VERSION" https://github.com/greenbone/ospd.git \
-        || (cd ospd; git pull --all; git checkout "ospd-$GVM_VERSION"; git pull; cd ..)
+    git clone -b "$GVM_VERSION" https://github.com/greenbone/gsa.git \
+        || (cd gsa; git pull --all; git checkout "$GVM_VERSION"; git pull; cd ..)
+    git clone -b "$GVM_VERSION" https://github.com/greenbone/ospd-openvas.git \
+        || (cd ospd-openvas; git pull --all; git checkout "$GVM_VERSION"; git pull; cd ..)
+    git clone -b "$GVM_VERSION" https://github.com/greenbone/ospd.git \
+        || (cd ospd; git pull --all; git checkout "$GVM_VERSION"; git pull; cd ..)
 }
 
 exec_as gvm clone_sources GVM_VERSION

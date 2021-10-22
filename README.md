@@ -9,7 +9,7 @@ This script installs GVM, alias OpenVAS. It is not made for docker, but VMs and 
 Set the following environment variables as for your need.
 
 - `GVM_INSTALL_PREFIX`: Path to the gvm user directory. (default = */var/opt/gvm*)
-- `GVM_VERSION`: GVM version to install. (default = *21.04*)
+- `GVM_VERSION`: GVM version to install. (one of [stable,oldstable,main]; default = *stable*)
 - `GVM_ADMIN_PWD`: Initial admin password. (default = *admin*)
 
 ```bash

@@ -219,7 +219,7 @@ function clone_sources() {
         || (cd openvas; git pull --all; git checkout "$GVM_VERSION"; git pull; cd ..)
     git clone -b "$GVM_VERSION" https://github.com/greenbone/gvmd.git \
         || (cd gvmd; git pull --all; git checkout "$GVM_VERSION"; git pull; cd ..)
-    git clone -b master --single-branch https://github.com/greenbone/openvas-smb.git \
+    git clone -b main --single-branch https://github.com/greenbone/openvas-smb.git \
         || (cd openvas-smb; git pull; cd ..)
     git clone -b "$GVM_VERSION" https://github.com/greenbone/gsa.git \
         || (cd gsa; git pull --all; git checkout "$GVM_VERSION"; git pull; cd ..)
@@ -227,6 +227,8 @@ function clone_sources() {
         || (cd ospd-openvas; git pull --all; git checkout "$GVM_VERSION"; git pull; cd ..)
     git clone -b "$GVM_VERSION" https://github.com/greenbone/ospd.git \
         || (cd ospd; git pull --all; git checkout "$GVM_VERSION"; git pull; cd ..)
+    git clone -b "$GVM_VERSION" https://github.com/greenbone/gsad.git \
+        || (cd gsad; git pull --all; git checkout "$GVM_VERSION"; git pull; cd ..)
 }
 
 exec_as gvm clone_sources GVM_VERSION
@@ -241,7 +243,7 @@ function install_gvm_libs() {
     cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" \
       -DLOCALSTATEDIR="$GVM_INSTALL_PREFIX/var" -DSYSCONFDIR="$GVM_INSTALL_PREFIX/etc" ..
     make -j$(nproc)
-    make doc
+    # requires /run/gvm directory
     make install
 }
 
@@ -267,12 +269,11 @@ function install_openvas() {
     cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" \
       -DLOCALSTATEDIR="$GVM_INSTALL_PREFIX/var" -DSYSCONFDIR="$GVM_INSTALL_PREFIX/etc" ..
     make -j$(nproc)
-    make doc
     make install
 }
 
-$AS_ROOT "mkdir -p -m 750 /run/gvm /run/ospd"
-$AS_ROOT "chown -R gvm. /run/gvm /run/ospd"
+$AS_ROOT "mkdir -p -m 750 /run/gvm /run/gsad /run/ospd /run/gvmd"
+$AS_ROOT "chown -R gvm. /run/gvm /run/gsad /run/ospd /run/gvmd"
 log -i "Install gvm-libs"
 exec_as gvm install_gvm_libs PKG_CONFIG_PATH GVM_INSTALL_PREFIX
 log -i "Install openvas-smb"
@@ -317,7 +318,6 @@ function install_gvmd() {
     cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" -DSYSTEMD_SERVICE_DIR="$GVM_INSTALL_PREFIX" \
       -DLOCALSTATEDIR="$GVM_INSTALL_PREFIX/var" -DSYSCONFDIR="$GVM_INSTALL_PREFIX/etc" ..
     make -j$(nproc)
-    make doc
     make install
 }
 
@@ -359,15 +359,20 @@ exec_as gvm setup_gvmd GVM_ADMIN_PWD
 function install_gsa() {
     set -e
     export PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
-    cd ~/src/gsa
+    cd ~/src/gsad
     mkdir -p build
     cd build
     rm -rf *
     cmake -DCMAKE_INSTALL_PREFIX="$GVM_INSTALL_PREFIX" -DSYSTEMD_SERVICE_DIR="$GVM_INSTALL_PREFIX" \
       -DLOCALSTATEDIR="$GVM_INSTALL_PREFIX/var" -DSYSCONFDIR="$GVM_INSTALL_PREFIX/etc" ..
     make -j$(nproc)
-    make doc
     make install
+    cd ~/src/gsa
+    rm -rf build
+    yarn
+    yarn build
+    mkdir -p $GVM_INSTALL_PREFIX/share/gvm/gsad/web/
+    cp -r build/* $GVM_INSTALL_PREFIX/share/gvm/gsad/web/
     touch "$GVM_INSTALL_PREFIX/var/log/gvm/gsad.log"
 }
 
@@ -404,11 +409,11 @@ After=postgresql.service ospd-openvas.service network.target networking.service
 Type=forking
 User=gvm
 Group=gvm
-PIDFile=/run/gvm/gvmd.pid
-RuntimeDirectory=gvm
+PIDFile=/run/gvmd/gvmd.pid
+RuntimeDirectory=gvmd
 RuntimeDirectoryMode=2775
 EnvironmentFile=$GVM_INSTALL_PREFIX/etc/default/gvmd
-ExecStart=$GVM_INSTALL_PREFIX/sbin/gvmd --osp-vt-update=/run/ospd/ospd-openvas.sock -c /run/gvm/gvmd.sock --listen-group=gvm
+ExecStart=$GVM_INSTALL_PREFIX/sbin/gvmd --osp-vt-update=/run/ospd/ospd-openvas.sock -c /run/gvmd/gvmd.sock --listen-group=gvm
 Restart=always
 TimeoutStopSec=10
 PrivateTmp=true
@@ -430,8 +435,10 @@ After=network.target gvmd.service
 Wants=gvmd.service
 [Service]
 Type=forking
-PIDFile=/run/gvm/gsad.pid
-ExecStart=$GVM_INSTALL_PREFIX/sbin/gsad --drop-privileges=gvm --munix-socket=/run/gvm/gvmd.sock $GVM_GSAD_OPTS
+PIDFile=/run/gsad/gsad.pid
+RuntimeDirectory=gsad
+RuntimeDirectoryMode=2775
+ExecStart=$GVM_INSTALL_PREFIX/sbin/gsad --drop-privileges=gvm --munix-socket=/run/gvmd/gvmd.sock $GVM_GSAD_OPTS
 Restart=always
 TimeoutStopSec=10
 PrivateTmp=true

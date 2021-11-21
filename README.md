@@ -2,7 +2,7 @@
 
 An *unofficial* script to install GVM alias OpenVAS on debian (10) and ubuntu (20.04).
 
-This script installs GVM, alias OpenVAS. It is not made for docker, but VMs and bare metal deployments. It does not configure any of the components, nor the system to be secure or production ready.
+This script installs GVM, alias OpenVAS. It is not made for docker, but VMs and bare metal deployments. It does not configure any of the components, nor the system to be secure or production ready. Most Linux distributions come with thier own GVM packages, which might be more stable and elegant to deploy. This script is for all, who want their GVM to be installed from git.
 
 ## Usage
 
@@ -25,7 +25,7 @@ $ ./install.sh
 - shell (SSH) on the target system
 - *sudo* installed
 - user with *sudo* permissions
-- at least ~10GB disk storage (my test VM used 9.8GB after all)
+- at least 16GB disk storage
 - at least 4GB of memory
 - at least 2 CPU cores / vCPUs
 
